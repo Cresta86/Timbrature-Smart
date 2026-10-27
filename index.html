@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#081426">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2343d7ca'/%3E%3Ctext x='32' y='43' text-anchor='middle' font-size='34' font-family='Arial' font-weight='700' fill='%2306262d'%3ET%3C/text%3E%3C/svg%3E">
+  <title>Timbrature Smart</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">T</span>
+      <div><strong>Timbrature Smart</strong><span>Presenze personali</span></div>
+    </div>
+    <div class="top-actions">
+      <button class="ghost small smart-month-button" id="autoSmartButton" type="button">Smart del mese</button>
+      <button class="ghost small" id="exportButton" type="button">Esporta CSV</button>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="hero" aria-label="Selezione del mese">
+      <div class="hero-logo" role="img" aria-label="Logo Timbrature Smart">
+        <svg viewBox="0 0 72 72" aria-hidden="true">
+          <defs>
+            <linearGradient id="logoGradient" x1="8" y1="6" x2="64" y2="68" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#56e2d4"/>
+              <stop offset="1" stop-color="#4f8ff7"/>
+            </linearGradient>
+          </defs>
+          <rect x="3" y="3" width="66" height="66" rx="19" fill="url(#logoGradient)"/>
+          <circle cx="36" cy="36" r="21" fill="#09233a" fill-opacity=".94" stroke="#dffefa" stroke-width="3"/>
+          <path d="M36 22v15l10 7" fill="none" stroke="#73e5da" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="36" cy="36" r="3.2" fill="#fff"/>
+          <path d="M15 18h9M48 54h9" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".8"/>
+        </svg>
+        <div class="hero-wordmark"><span>Timbrature</span><strong>Smart</strong></div>
+      </div>
+      <div class="month-switcher" aria-label="Selezione mese">
+        <button class="icon-button" id="prevMonth" type="button" aria-label="Mese precedente">‹</button>
+        <button class="month-label" id="todayMonth" type="button" title="Torna al mese corrente"></button>
+        <button class="icon-button" id="nextMonth" type="button" aria-label="Mese successivo">›</button>
+      </div>
+    </section>
+
+    <div class="local-note"><strong>Dati locali:</strong> salvati solo in questo browser. Il programma è un supporto personale e non sostituisce SAP.</div>
+
+    <section class="summary-grid" aria-label="Riepilogo mensile">
+      <article class="summary-card balance">
+        <div class="summary-icon">＋</div>
+        <div><span>Minuti in più</span><strong id="balanceValue">0 min</strong><small>Residuo ordinario del mese</small></div>
+      </article>
+      <article class="summary-card extra">
+        <div class="summary-icon">15</div>
+        <div><span>Minuti extra</span><strong id="extraValue">0 min</strong><small id="extraBlocks">0 blocchi da 15 min</small></div>
+      </article>
+      <article class="summary-card missing">
+        <div class="summary-icon">−</div>
+        <div><span>Minuti mancanti</span><strong id="missingValue">0 min</strong><small>Da sistemare o gestire in SAP</small></div>
+      </article>
+      <article class="summary-card basket">
+        <div class="summary-icon">B</div>
+        <div><span>Basket ingresso</span><strong id="basketValue">0 / 20 min</strong><small id="basketRemaining">20 min disponibili</small></div>
+      </article>
+    </section>
+
+    <section class="status-row" aria-live="polite">
+      <span id="openDaysStatus">Nessuna giornata aperta</span>
+      <button class="link-button" id="resetMonth" type="button">Azzera il mese</button>
+    </section>
+
+    <section class="calendar" aria-label="Calendario timbrature">
+      <div class="weekdays" aria-hidden="true">
+        <span>Lun</span><span>Mar</span><span>Mer</span><span>Gio</span><span>Ven</span><span>Sab</span><span>Dom</span>
+      </div>
+      <div class="calendar-grid" id="calendarGrid"></div>
+    </section>
+
+    <section class="rules">
+      <div><strong>8 ore</strong><span>Presenza giornaliera</span></div>
+      <div><strong>45 min</strong><span>Pausa standard se non timbrata</span></div>
+      <div><strong>60 + 20 min</strong><span>Flessibilità ingresso + basket mensile</span></div>
+      <div><strong>15 min</strong><span>Blocco minimo dei minuti extra</span></div>
+    </section>
+  </main>
+
+  <dialog id="dayDialog" aria-labelledby="dialogTitle">
+    <form method="dialog" id="dayForm" novalidate>
+      <div class="dialog-header">
+        <div><p class="eyebrow">GIORNATA</p><h2 id="dialogTitle">Gestione timbrature</h2></div>
+        <button class="icon-button close" type="button" data-close-dialog aria-label="Chiudi">×</button>
+      </div>
+
+      <div class="error-box" id="errorBox" role="alert" hidden></div>
+
+      <section class="form-section day-type-section">
+        <label>Tipo di giornata
+          <select id="dayType" name="type">
+            <option value="office">Ufficio</option>
+            <option value="smart">Smart working</option>
+          </select>
+        </label>
+        <p class="hint">Lo smart working è sempre impostato automaticamente dalle 08:00 alle 16:45.</p>
+      </section>
+
+      <section class="form-section">
+        <h3>Presenza</h3>
+        <div class="field-grid two">
+          <label>Entrata<input id="entryInput" name="entry" type="time" step="60"></label>
+          <label>Uscita finale <span class="optional">facoltativa</span><input id="exitInput" name="exit" type="time" step="60"></label>
+        </div>
+        <div class="calculate-row">
+          <button class="ghost" id="calculateExit" type="button">Calcola uscita per 8 ore</button>
+          <span id="calculatedExit"></span>
+        </div>
+        <p class="hint">Puoi salvare anche solo l’entrata e completare la giornata più tardi.</p>
+      </section>
+
+      <section class="form-section">
+        <div class="section-title"><h3>Pausa pranzo</h3><button class="link-button" id="clearLunch" type="button">Nessuna timbratura</button></div>
+        <div class="field-grid two">
+          <label>Uscita pranzo<input id="lunchOutInput" name="lunchOut" type="time" step="60"></label>
+          <label>Rientro pranzo<input id="lunchInInput" name="lunchIn" type="time" step="60"></label>
+        </div>
+        <div class="presets" aria-label="Fasce pranzo rapide">
+          <button type="button" data-lunch="12:00,12:45">12:00–12:45</button>
+          <button type="button" data-lunch="12:30,13:15">12:30–13:15</button>
+          <button type="button" data-lunch="13:00,13:45">13:00–13:45</button>
+          <button type="button" data-lunch="13:30,14:15">13:30–14:15</button>
+        </div>
+        <p class="hint">Se lasci entrambi i campi vuoti, a giornata conclusa vengono conteggiati 45 minuti standard.</p>
+      </section>
+
+      <section class="form-section compact">
+        <label>Nota personale <span class="optional">facoltativa</span><input id="noteInput" name="note" type="text" maxlength="120" placeholder="Esempio: timbratura da controllare"></label>
+      </section>
+
+      <div class="live-preview" id="livePreview">Inserisci l’entrata per iniziare.</div>
+      <div class="dialog-actions">
+        <button class="danger" id="deleteDay" type="button">Cancella giornata</button>
+        <div><button class="ghost" type="button" data-close-dialog>Annulla</button><button class="primary" id="saveDay" type="submit">Salva</button></div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="smartMonthDialog" aria-labelledby="smartMonthTitle">
+    <form method="dialog" id="smartMonthForm" novalidate>
+      <div class="dialog-header">
+        <div><p class="eyebrow">PROGRAMMAZIONE RAPIDA</p><h2 id="smartMonthTitle">Smart working del mese</h2></div>
+        <button class="icon-button close" type="button" data-close-dialog aria-label="Chiudi">×</button>
+      </div>
+      <p class="smart-intro">Seleziona i giorni ricorrenti. Tutte le date corrispondenti verranno impostate automaticamente dalle <strong>08:00 alle 16:45</strong>.</p>
+      <div class="error-box" id="smartMonthError" role="alert" hidden></div>
+      <fieldset class="weekday-choices">
+        <legend>Giorni della settimana</legend>
+        <label><input type="checkbox" name="smartWeekday" value="1"><span>Lunedì</span></label>
+        <label><input type="checkbox" name="smartWeekday" value="2"><span>Martedì</span></label>
+        <label><input type="checkbox" name="smartWeekday" value="3"><span>Mercoledì</span></label>
+        <label><input type="checkbox" name="smartWeekday" value="4"><span>Giovedì</span></label>
+        <label><input type="checkbox" name="smartWeekday" value="5"><span>Venerdì</span></label>
+      </fieldset>
+      <label class="overwrite-choice"><input id="overwriteSmartMonth" type="checkbox"><span>Sostituisci anche le giornate già compilate nei giorni selezionati</span></label>
+      <div class="smart-preview" id="smartMonthPreview">Seleziona almeno un giorno.</div>
+      <div class="dialog-actions smart-actions">
+        <button class="ghost" type="button" data-close-dialog>Annulla</button>
+        <button class="primary" id="applySmartMonth" type="submit">Inserisci nel mese</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <footer>Timbrature Smart · Versione 2026.10.27.6</footer>
+  <script src="core.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
